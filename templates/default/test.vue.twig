@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block pageTemplate %}
+    <div>
+        <h1>
+            Test page
+        </h1>
+        <v-alert color="{{ vueLayout ? 'success' : 'warning' }}" :dismissible="true" close-label="close">
+            {{ vueLayout ? 'Loaded by fetch' : 'Loaded by page request' }}
+        </v-alert>
+    </div>
+{% endblock %}
+
+{% block pageJs %}
+    <script>
+        var vuePage = {
+            delimiters: ['{', '}'],
+            template: `{{ block('pageTemplate') }}`
+        };
+    </script>
+{% endblock %}

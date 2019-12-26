@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block pageTemplate %}
+    <div>
+        <h1 @click="$emit('clickTitle', true)">
+            Twig-vue-component
+        </h1>
+        <v-alert color="success" :dismissible="true" close-label="close">An alert</v-alert>
+        <p>
+            As a result, this behaves just like any other vue-component, making it possible to interact with other
+            components as well.
+        </p>
+    </div>
+{% endblock %}

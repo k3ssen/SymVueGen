@@ -1,0 +1,23 @@
+{% block menu %}
+    <v-list nav>
+        {% block menuItems %}
+            <menu-item href="/" icon="mdi-view-dashboard">
+                Dashboard
+            </menu-item>
+            <menu-item href="/test" icon="mdi-view-dashboard">
+                Test page
+            </menu-item>
+            <menu-item @click="fetchPage('/test')" icon="mdi-view-dashboard">
+                Test page (fetch)
+            </menu-item>
+        {% endblock %}
+    </v-list>
+{% endblock %}
+
+{% block menuJs %}
+    <script>
+        var vueMenu = {
+            template: `{{ block('menu') }}`
+        };
+    </script>
+{% endblock %}
