@@ -1,8 +1,9 @@
-{% block pageJs %}
+{% block js %}
     <script>
-        var vuePage = {
+        var vue = {
             delimiters: ['{', '}'],
-            template: `{% block pageTemplate %}{% endblock %}`
+            template: `{% block body %}{% endblock %}`,
+            data: function() { return {{ get_vue_data()|raw }}; }
         };
     </script>
 {% endblock %}

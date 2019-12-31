@@ -9,12 +9,14 @@ for (const i in VuetifyComponents) {
 
 // Import all custom components that you need globally available.
 import MenuItem from './components/MenuItem';
+import CollectionType from './components/CollectionType';
 
 // Adding all components to the object below may be somewhat cumbersome (compared to using something like
 // 'import * as globalComponents from './components'), but by using the object below, the components will be recognized
 // by the IDE.
 const globalComponents = {
     MenuItem,
+    CollectionType,
 };
 
 for (const i in globalComponents) {

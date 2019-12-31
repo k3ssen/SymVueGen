@@ -8,12 +8,16 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class DefaultController extends AbstractController
 {
+    private ?string $testValue = null;
+
     /**
      * @Route("/", name="default")
      */
     public function index()
     {
-        return $this->render('default/index.vue.twig');
+        return $this->render('default/index.vue.twig', [
+            'testval' => $this->testValue,
+        ]);
     }
 
     /**

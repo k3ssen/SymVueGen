@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block pageTemplate %}
+{% block body %}
     <div>
         <h1>
             Test page
@@ -11,11 +11,11 @@
     </div>
 {% endblock %}
 
-{% block pageJs %}
+{% block js %}
     <script>
-        var vuePage = {
+        var vue = {
             delimiters: ['{', '}'],
-            template: `{{ block('pageTemplate') }}`
+            template: `{{ block('body') }}`
         };
     </script>
 {% endblock %}

@@ -22,7 +22,7 @@
         data: () => ({
             drawer: null,
             vueMenu: vueMenu,
-            vuePage: vuePage,
+            vuePage: vue,
         }),
         mounted() {
             this.$store.watch((state) => state.route.pageUrl, this.loadPage);
@@ -34,7 +34,7 @@
                 url += url.includes('?') ? '&vue=1' : '?vue=1';
                 const pageResult = await fetch(url);
                 this.vuePage = (new Function(
-                    (await pageResult.text()).replace(/<\/?script([^a-zA-Z>]?)([^>]*)>/g, '') + '; return vuePage;'
+                    (await pageResult.text()).replace(/<\/?script([^a-zA-Z>]?)([^>]*)>/g, '') + '; return vue;'
                 ))();
             }
         }

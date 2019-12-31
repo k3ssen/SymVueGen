@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New MetaEntity{% endblock %}
+
+{% block body %}
+    <div>
+        <h1>Create new MetaEntity</h1>
+
+        {{ include('meta_entity/_form.html.twig') }}
+
+        <a href="{{ path('meta_entity_index') }}">back to list</a>
+    </div>
+{% endblock %}

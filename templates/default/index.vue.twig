@@ -1,9 +1,9 @@
 {% extends 'base.html.twig' %}
 
-{% block pageTemplate %}
+{% block body %}
     <div>
         <h1 @click="$emit('clickTitle', true)">
-            Twig-vue-component
+            Twig-vue-component {{ testval }}
         </h1>
         <v-alert color="success" :dismissible="true" close-label="close">An alert</v-alert>
         <p>

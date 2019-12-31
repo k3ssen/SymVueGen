@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edit MetaEntity{% endblock %}
+
+{% form_theme form _self %}
+
+{#{%- block collection_widget_subform -%}#}
+{#    {% set subform = field is defined ? field : prototype %}#}
+{#    <div class="row mr-2">#}
+{#        {{ form_row(subform.type) }}#}
+{#        {{ form_row(subform.name) }}#}
+{#        {{ form_rest(subform) }}#}
+{#                {{ form_widget(subform, {label: false}) }}#}
+
+{#        <div class="col-1">#}
+{#        {% if prototype is defined%}#}
+{#            <v-btn @click="$emit('remove')">Remove</v-btn>#}
+{#        {% elseif form.vars.allow_delete  %}#}
+{#            <v-btn onClick="this.closest('.subform').remove()">Remove</v-btn>#}
+{#        {% endif %}#}
+{#        </div>#}
+{#    </div>#}
+{#{%- endblock -%}#}
+
+{% block body %}
+    <div>
+    <h1>Edit MetaEntity</h1>
+
+    {{ include('meta_entity/_form.html.twig', {'button_label': 'Update'}) }}
+
+    <a href="{{ path('meta_entity_index') }}">back to list</a>
+
+    {{ include('meta_entity/_delete_form.html.twig') }}
+    </div>
+{% endblock %}
