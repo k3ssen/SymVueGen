@@ -8,7 +8,6 @@ use Symfony\Component\Form\AbstractTypeExtension;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
-use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class TypeExtension extends AbstractTypeExtension
 {
@@ -22,14 +21,6 @@ class TypeExtension extends AbstractTypeExtension
         $this->vueDataStorage = $vueDataStorage;
     }
 
-    public function configureOptions(OptionsResolver $resolver): void
-    {
-//        $resolver->setDefined(['cols']);
-        $resolver->setDefaults([
-            'v-model' => null,
-        ]);
-    }
-
     public static function getExtendedTypes(): iterable
     {
         return [FormType::class];
@@ -40,48 +31,52 @@ class TypeExtension extends AbstractTypeExtension
         if ($view->vars['compound'] ?? true) {
             return;
         }
-        $attr = $view->vars['attr'] ?? [];
-        if ($options['v-model'] ?? false) {
-            if ($attr['v-model'] ?? false) {
-                throw new \RuntimeException('option "v-model" should not be defined if it is also defined inside the "attr" option');
+        $this->setVModel($view);
+
+        $this->replaceVModelShortTag($view);
+    }
+
+    /**
+     * Replaces '$$.' with 'form.parent_model_name.' to make it easier to refer to other fields inside form attributes.
+     * This is especially useful for collections.
+     * Example:
+     * ['v-if' => '$$.numberOfPages']
+     * in a BookType form that is a collection within LibraryType would become something like
+     * ['v-if' => 'form.library.books[0].numberOfPages']
+     * for the first item and
+     * ['v-if' => 'form.library.books[__name__].numberOfPages']
+     * for the prototype.
+     */
+    protected function replaceVModelShortTag(FormView $view)
+    {
+        $vueParentModelName = $view->parent ? $this->getVueModelName($view->parent) : 'form';
+        foreach ($view->vars['attr'] as $key => $attrVal) {
+            if (is_string($attrVal)) {
+                $view->vars['attr'][$key] = str_replace('$$.', $vueParentModelName.'.', $attrVal);
             }
-            $attr['v-model'] = $options['v-model'];
         }
-        $attr['v-model'] = 'form.'.$this->getVueModelName($view); //$attr['v-model'] ?? 'form.'.$view->vars['id'];
+        foreach ($view->vars['row_attr'] as $key => $attrVal) {
+            if (is_string($attrVal)) {
+                $view->vars['row_attr'][$key] = str_replace('$$.', $vueParentModelName.'.', $attrVal);
+            }
+        }
+    }
 
-        $rowAttr = $view->vars['row_attr'] ?? [];
-//        $rowAttr['cols'] = $options['cols'] ?? $rowAttr['cols'] ?? 12;
-
+    protected function setVModel(FormView $view)
+    {
+        $attr = $view->vars['attr'] ?? [];
+        $attr['v-model'] = $this->getVueModelName($view);
         $value = $view->vars['value'];
         if (array_key_exists('checked', $view->vars)) {
             $value = $view->vars['checked'] ? "1" : "0";
         }
-
-        if ($view->parent) {
-            $vueParentModelName = $this->getVueModelName($view->parent);
-            foreach ($attr as $key => $attrVal) {
-                if (is_string($attrVal)) {
-                    $attr[$key] = str_replace('$$.', 'form.'.$vueParentModelName.'.', $attrVal);
-                }
-            }
-            foreach ($rowAttr as $key => $attrVal) {
-                if (is_string($attrVal)) {
-                    $rowAttr[$key] = str_replace('$$.', 'form.'.$vueParentModelName.'.', $attrVal);
-                }
-            }
-        }
-
         $this->vueDataStorage->addData($attr['v-model'], $value);
         $view->vars['attr'] = $attr;
-        $view->vars['row_attr'] = $rowAttr;
     }
 
     protected function getVueModelName(FormView $view): string
     {
-        $name = '';
-        if ($view->parent) {
-            $name = $this->getVueModelName($view->parent);
-        }
+        $name = $view->parent ? $this->getVueModelName($view->parent) : 'form';
         if (is_numeric($view->vars['name'])) {
             return $name . '['.$view->vars['name'].']';
         } else {

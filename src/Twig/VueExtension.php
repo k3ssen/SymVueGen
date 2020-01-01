@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Twig;
 
 use App\Vue\VueDataStorage;
-use Symfony\Component\HttpFoundation\Request;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -23,7 +22,6 @@ class VueExtension extends AbstractExtension
     public function getFunctions(): array
     {
         return [
-            new TwigFunction('is_json_request', [$this, 'isJsonRequest']),
             new TwigFunction('add_vue_data', [$this, 'addVueData']),
             new TwigFunction('get_vue_data', [$this, 'getVueData']),
         ];
@@ -46,10 +44,5 @@ class VueExtension extends AbstractExtension
     public function getVueData(): string
     {
         return $this->vueDataStorage->getJson();
-    }
-
-    public function isJsonRequest(Request $request): bool
-    {
-        return $request->getContentType() && stripos($request->getContentType(), 'json') !== -1;
     }
 }

@@ -2,28 +2,8 @@
 
 {% block title %}Edit MetaEntity{% endblock %}
 
-{% form_theme form _self %}
-
-{#{%- block collection_widget_subform -%}#}
-{#    {% set subform = field is defined ? field : prototype %}#}
-{#    <div class="row mr-2">#}
-{#        {{ form_row(subform.type) }}#}
-{#        {{ form_row(subform.name) }}#}
-{#        {{ form_rest(subform) }}#}
-{#                {{ form_widget(subform, {label: false}) }}#}
-
-{#        <div class="col-1">#}
-{#        {% if prototype is defined%}#}
-{#            <v-btn @click="$emit('remove')">Remove</v-btn>#}
-{#        {% elseif form.vars.allow_delete  %}#}
-{#            <v-btn onClick="this.closest('.subform').remove()">Remove</v-btn>#}
-{#        {% endif %}#}
-{#        </div>#}
-{#    </div>#}
-{#{%- endblock -%}#}
 
 {% block body %}
-    <div>
     <h1>Edit MetaEntity</h1>
 
     {{ include('meta_entity/_form.html.twig', {'button_label': 'Update'}) }}
@@ -31,5 +11,57 @@
     <a href="{{ path('meta_entity_index') }}">back to list</a>
 
     {{ include('meta_entity/_delete_form.html.twig') }}
-    </div>
+{% endblock %}
+
+{% block js %}
+    {{ parent() }}
+    <script>
+        vue.computed.targetEntityDefault = function() {
+            return this.form.meta_entity.name.charAt(0).toLowerCase() + this.form.meta_entity.name.slice(1);
+        };
+        vue.methods = {
+            isRelationType(type) {
+                return ["many_to_one", "many_to_many", "one_to_many", "one_to_one"].includes(type);
+            },
+        };
+        vue.watch = {
+            'form.meta_entity.metaProperties': {
+                deep: true,
+                handler: function (metaProperties) {
+                    for (const metaProperty of Object.values(metaProperties)) {
+                        if (metaProperty.type === 'one_to_many') {
+                            metaProperty.inversedBy = null;
+                            metaProperty.mappedBy = metaProperty.mappedBy || this.targetEntityDefault;
+                        } else if (this.isRelationType(metaProperty.type)) {
+                            metaProperty.mappedBy = null;
+                            metaProperty.inversedBy = metaProperty.inversedBy || this.targetEntityDefault;
+                        }
+                    }
+                }
+            },
+            'form.meta_entity.traits': function (traits) {
+                if (traits.includes('BlameableTrait')) {
+                    if (!this.form.meta_entity.interfaces.includes('BlameableInterface')) {
+                        this.form.meta_entity.interfaces.push('BlameableInterface');
+                    }
+                } else {
+                    var searchIndex = this.form.meta_entity.interfaces.indexOf('BlameableInterface');
+                    if (searchIndex !== -1) {
+                        this.form.meta_entity.interfaces.splice(searchIndex, 1);
+                    }
+                }
+
+                if (traits.includes('TimestampableTrait')) {
+                    if (!this.form.meta_entity.interfaces.includes('TimestampableInterface')) {
+                        this.form.meta_entity.interfaces.push('TimestampableInterface');
+                    }
+                } else {
+                    var searchIndex = this.form.meta_entity.interfaces.indexOf('TimestampableInterface');
+                    if (searchIndex !== -1) {
+                        this.form.meta_entity.interfaces.splice(searchIndex, 1);
+                    }
+                }
+            }
+        };
+    </script>
 {% endblock %}

@@ -15,34 +15,98 @@ class MetaPropertyType extends AbstractType
     {
         $builder
             ->add('name', null, [
+                'row_attr' => [
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                ],
+                'attr' => [
+                    'label' => 'Property name',
+                ]
             ])
             ->add('type', ChoiceType::class, [
+                'row_attr' => [
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                ],
                 'choices' => array_combine($keys = array_keys(MetaProperty::TYPES), $keys),
             ])
             ->add('length', null, [
                 'row_attr' => [
-                    'cols' => 2,
-                    'v-if' => '!["many_to_one", "many_to_many", "one_to_many", "one_to_one"].includes($$.type)',
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                    'v-if' => '!isRelationType($$.type)',
+                ],
+                'attr' => [
+                    ':label' => '$$.type === "decimal" ? "precision" : "length"',
+                    'hint' => 'Leave blank for default',
                 ]
+            ])
+            ->add('scale', null, [
+                'row_attr' => [
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                    'v-if' => '$$.type === "decimal"',
+                ],
             ])
             ->add('targetEntity', null, [
                 'row_attr' => [
-                    'cols' => 2,
-                    'v-if' => '["many_to_one", "many_to_many", "one_to_many", "one_to_one"].includes($$.type)',
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                    'v-if' => 'isRelationType($$.type)',
+                ],
+                'attr' => [
+                    ':required' => 'isRelationType($$.type)',
                 ]
             ])
+            ->add('mappedBy', null, [
+                'row_attr' => [
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                    'v-if' => '["many_to_many", "one_to_many", "one_to_one"].includes($$.type)',
+                ],
+                'attr' => [
+                    ':disabled' => '$$.inversedBy > ""',
+                    ':messages' => '$$.inversedBy > "" ? "InversedBy already set" : ""',
+                ],
+            ])
+            ->add('inversedBy', null, [
+                'row_attr' => [
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                    'v-if' => '["many_to_many", "many_to_one", "one_to_one"].includes($$.type)',
+                ],
+                'attr' => [
+                    'hint' => 'Leave blank if not inversed',
+                    ':disabled' => '$$.mappedBy > ""',
+                    ':messages' => '$$.mappedBy > "" ? "MappedBy already set" : ""',
+                ],
+            ])
             ->add('nullable', null, [
+                'label' => 'N',
+                'row_attr' => [
+                    'title' => 'Nullable',
+                    'class' => 'col-4 col-sm-2 col-md-1',
+                    'v-if' => '!["many_to_many"].includes($$.type)',
+                ],
+                'attr' => [
+                    ':messages' => '$$.type === "one_to_many" ? "On mappedBy" : ""',
+                ]
             ])
             ->add('unique', null, [
+                'label' => 'U',
+                'row_attr' => [
+                    'title' => 'Unique',
+                    'class' => 'col-4 col-sm-2 col-md-1',
+                    'v-if' => '!["many_to_many"].includes($$.type)',
+                ],
+                'attr' => [
+                    ':messages' => '$$.type === "one_to_many" ? "On mappedBy" : ""',
+                ]
             ])
-//            ->add('unique')
-//            ->add('length')
-//            ->add('scale')
-//            ->add('targetEntity')
-//            ->add('mappedBy')
-//            ->add('inversedBy')
-//            ->add('orphanRemoval')
-//            ->add('metaEntity')
+            ->add('orphanRemoval', null, [
+                'label' => 'OR',
+                'row_attr' => [
+                    'title' => 'Orphan removal',
+                    'class' => 'col-4 col-sm-2 col-md-1',
+                    'v-if' => 'isRelationType($$.type) && $$.type !== "one_to_one"',
+                ],
+                'attr' => [
+                    ':messages' => '$$.type === "many_to_one" ? "Will be set on the opposing side" : ""',
+                ]
+            ])
         ;
     }
 

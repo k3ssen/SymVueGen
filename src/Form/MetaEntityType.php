@@ -47,9 +47,7 @@ class MetaEntityType extends AbstractType
             ->add('metaProperties', CollectionType::class, [
                 'label' => 'Properties',
                 'entry_type' => MetaPropertyType::class,
-                'prototype_data' => new MetaProperty($metaEntity),
                 'allow_add' => true,
-                'allow_delete' => true,
                 'by_reference' => false,
             ])
         ;

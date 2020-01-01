@@ -2,8 +2,15 @@
     <script>
         var vue = {
             delimiters: ['{', '}'],
-            template: `{% block body %}{% endblock %}`,
-            data: function() { return {{ get_vue_data()|raw }}; }
+            template: `<div>{{ block('body') }}</div>`,
+            created() {
+                this.pageData = {{ get_vue_data()|raw }};
+            },
+            computed: {
+                form() {
+                    return this.pageData.form || {};
+                }
+            },
         };
     </script>
 {% endblock %}
