@@ -15,6 +15,7 @@ class DefaultController extends AbstractController
      */
     public function index()
     {
+        dump(new \DateTime()); exit();
         return $this->render('default/index.vue.twig', [
             'testval' => $this->testValue,
         ]);

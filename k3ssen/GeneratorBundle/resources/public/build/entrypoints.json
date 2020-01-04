@@ -1,0 +1,15 @@
+{
+  "entrypoints": {
+    "generator": {
+      "js": [
+        "/build/runtime.js",
+        "/build/0.js",
+        "/build/generator.js"
+      ],
+      "css": [
+        "/build/0.css",
+        "/build/generator.css"
+      ]
+    }
+  }
+}

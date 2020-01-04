@@ -1,0 +1,16 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    K3ssen\GeneratorBundle\:
+        resource: '../../*'
+        exclude: '../../{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+        bind:
+            $projectDir: '%kernel.project_dir%'
+
+    K3ssen\GeneratorBundle\Controller\:
+        resource: '../../Controller'
+        tags: ['controller.service_arguments']

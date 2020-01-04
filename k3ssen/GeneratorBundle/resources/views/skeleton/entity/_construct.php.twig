@@ -1,0 +1,19 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{# @var property \K3ssen\GeneratorBundle\Entity\MetaProperty #}
+{# @var prop \K3ssen\GeneratorBundle\Entity\MetaProperty #}
+{% block construct %}
+{% set props = meta_entity.metaProperties | filter (prop => 'Collection' in prop.returnType) %}
+{% for property in props %}
+{%- if loop.first and (inner_content_only is not defined or inner_content_only == false) %}
+
+    public function __construct()
+    {
+{%- endif %}
+
+        $this->{{ property.name }} = new ArrayCollection();
+{%- if loop.index == props|length and (inner_content_only is not defined or inner_content_only == false) %}
+
+    }
+{% endif %}
+{% endfor %}
+{% endblock %}

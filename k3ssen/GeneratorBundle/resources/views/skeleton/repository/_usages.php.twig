@@ -1,0 +1,7 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{% block usages %}
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\ORM\QueryBuilder;
+use {{ meta_entity.class }};
+{% endblock %}

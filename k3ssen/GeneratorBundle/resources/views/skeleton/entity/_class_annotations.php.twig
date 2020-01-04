@@ -1,0 +1,10 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{% block class_annotations %}
+{% if meta_entity.annotations | length %}
+/**
+{% for annotation in meta_entity.annotations %}
+ * {{ annotation | raw }}
+{% endfor %}
+ */
+{% endif %}
+{% endblock %}

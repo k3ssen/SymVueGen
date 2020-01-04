@@ -93,6 +93,9 @@
     "jdorn/sql-formatter": {
         "version": "v1.2.17"
     },
+    "k3ssen/generator": {
+        "version": "0.1.0"
+    },
     "monolog/monolog": {
         "version": "2.0.2"
     },

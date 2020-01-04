@@ -1,0 +1,12 @@
+{% for type, messages in app.flashes %}
+    {% for message in messages %}
+        {% set arguments = {} %}
+        {% if message is iterable %}
+            {% set arguments = message.arguments %}
+            {% set message = message.message %}
+        {% endif %}
+        <v-alert type="{{ type }}" :dismissible="true">
+            {{ message|trans(arguments)|raw }}
+        </v-alert>
+    {% endfor %}
+{% endfor %}

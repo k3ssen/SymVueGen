@@ -1,2 +1,12 @@
-{% set vueLayout = app.request.get('vue') %}
-{% extends vueLayout|default(false) ? '/layout/vue-layout.vue.twig' : '/layout/base-layout.html.twig' %}
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Welcome!{% endblock %}</title>
+    {% block stylesheets %}
+    {% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+</body>
+</html>

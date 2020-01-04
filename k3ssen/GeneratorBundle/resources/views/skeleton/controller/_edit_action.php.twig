@@ -1,0 +1,36 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\MetaData\MetaEntityInterface #}
+{% block edit_action %}
+
+{% block edit_action_annotations %}
+    /**
+     * @Route("/{{ '{' ~ id_name ~ '}' }}/edit", name="{{ route_prefix }}_edit",  methods="GET|POST")
+     */
+{% endblock %}
+{% block edit_action_method_definition %}
+    public function edit(Request $request, {{ meta_entity.name }} ${{ entity_variable }}): Response
+{% endblock %}
+    {
+{% block edit_actions_security_check %}
+{%- if generate_options.useVoter %}
+        $this->denyAccessUnlessGranted({{ meta_entity.name }}Voter::EDIT, ${{ entity_variable }});
+
+{% endif %}
+{% endblock %}
+{% block edit_action_form_creation %}
+        $form = $this->createForm({{ meta_entity.name }}Type::class, ${{ entity_variable }});
+{% endblock %}
+{% block edit_action_form_handling %}
+        if ($this->handleForm($form, $request)) {
+{% block edit_action_redirect_response %}
+            return $this->redirectToRoute('{{ route_prefix }}_index');
+{% endblock %}
+        }
+{% endblock %}
+{% block edit_action_return_response %}
+        return $this->render('{{ view_prefix }}/edit.{{ generate_options.templatesFileExtension | trim('.') }}', [
+            '{{ meta_entity.name | tableize }}' => ${{ entity_variable }},
+            'form' => $form->createView(),
+        ]);
+{% endblock %}
+    }
+{% endblock edit_action %}

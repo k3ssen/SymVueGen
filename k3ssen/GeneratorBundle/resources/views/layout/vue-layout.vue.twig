@@ -1,0 +1,20 @@
+{% block body %}
+    {% include '@Generator/layout/alerts.vue.twig' %}
+{% endblock %}
+
+{% block js %}
+    <script>
+        var vue = {
+            delimiters: ['{', '}'],
+            template: `<div>{{ block('body') }}</div>`,
+            created() {
+                this.pageData = {{ get_vue_data()|raw }};
+            },
+            computed: {
+                form() {
+                    return this.pageData.form || {};
+                }
+            },
+        };
+    </script>
+{% endblock %}

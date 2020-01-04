@@ -1,0 +1,12 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{# @var property \K3ssen\GeneratorBundle\Entity\MetaProperty #}
+{% block magic_methods %}
+{% block __toString %}
+{% set property = meta_entity.metaProperties.first  %}
+
+    public function __toString(): string
+    {
+        return {{ property.type != 'string' or property.nullable ? '(string) '}}$this->get{{ property.name | classify }}();
+    }
+{% endblock %}
+{% endblock %}

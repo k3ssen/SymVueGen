@@ -1,0 +1,42 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\MetaData\MetaEntityInterface #}
+{# @var generate_options \K3ssen\GeneratorBundle\Generator\CrudGenerateOptions #}
+{% set entity_singularized = meta_entity.name|tableize %}
+{% set subdir = generate_options.controllerSubdirectory %}
+{% set route_prefix = (subdir ? subdir | tableize ~  '_': '') ~ entity_singularized %}
+{% use '@Generator/skeleton/templates/_index_table.txt.twig' %}
+{% block vars %}{% endblock %}
+{% block extends %}
+{{ "{% extends 'base.html.twig' %}" }}
+{% endblock %}
+
+{% block title %}
+{{ "{% set title = '"~meta_entity.name~"' %}" }}
+{{ "{% set sub_title = 'Overview' %}" }}
+{% endblock %}
+
+{% block body %}
+{{ "{% block body %}" }}
+{% block index_table %}
+{% if generate_options.useDatatable %}
+    {{ " {{ sg_datatables_render_html(datatable) }}" }}
+{% else %}
+{{ parent() }}
+{% endif %}
+{% endblock %}
+{% block actions %}
+    <div class="mt-5">
+        <a href="{{"{{ path('"~route_prefix ~"_new') }}" }}" class="btn btn-success">New</a>
+    </div>
+{% endblock %}
+{{ "{% endblock %}" }}
+{% endblock %}
+
+{% block javascripts %}
+{% if generate_options.useDatatable %}
+{{ "{% block javascripts %}" }}
+    {{ "{{ parent() }}" }}
+    {{ "{{ sg_datatables_render_js(datatable) }}" }}
+{{ "{% endblock %}" }}
+
+{% endif %}
+{% endblock %}

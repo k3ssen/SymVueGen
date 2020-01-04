@@ -1,0 +1,25 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{# @var property \K3ssen\GeneratorBundle\Entity\MetaProperty #}
+{% block properties %}
+{%- block id_property %}
+
+    /**
+     * @var int
+     * @ORM\Column(name="id", type="integer")
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="AUTO")
+     */
+    private int $id;
+{% endblock %}
+{%- for property in meta_entity.metaProperties %}
+
+    /**
+     {%- for annotation_line in property.annotations %}
+
+     * {{ annotation_line | raw }}
+     {%- endfor %}
+
+     */
+    private {{ property.returnType }} ${{ property.name }}{{ (property.default ? ' = ' ~ property.default : '')|raw }};
+{% endfor %}
+{% endblock %}

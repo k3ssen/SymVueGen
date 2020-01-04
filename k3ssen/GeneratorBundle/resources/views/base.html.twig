@@ -1,0 +1,2 @@
+{% set vueLayout = app.request.get('vue') %}
+{% extends vueLayout|default(false) ? '@Generator/layout/vue-layout.vue.twig' : '@Generator/layout/base-layout.html.twig' %}

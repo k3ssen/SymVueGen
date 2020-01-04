@@ -1,0 +1,12 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{% block class_definition %}
+    {%- block class_type -%}
+        class
+    {%- endblock -%}
+    {%- block class_name -%}
+        {{ ' ' ~ meta_entity.name }}Repository
+    {%- endblock %}
+    {%- block extends_class %} extends ServiceEntityRepository{%- endblock %}
+    {%- block implements %}{%- endblock %}
+
+{% endblock %}

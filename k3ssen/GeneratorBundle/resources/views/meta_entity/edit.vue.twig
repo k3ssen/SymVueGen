@@ -1,0 +1,76 @@
+{% extends '@Generator/base.html.twig' %}
+
+{% block title %}Edit MetaEntity{% endblock %}
+
+{% form_theme form '@Generator/form/vuetified-form.vue.twig'  %}
+
+{% block body %}
+    {{ parent() }}
+    <h1>Edit MetaEntity</h1>
+
+    {{ form_start(form) }}
+    {{ form_widget(form) }}
+    <v-btn type="submit" color="success">{{ button_label|default('Save') }}</v-btn>
+    {{ form_end(form) }}
+
+    {% if meta_entity.id %}
+        <v-btn href="{{ path('generator_meta_entity_generate', {id: meta_entity.id}) }}">Generate</v-btn>
+
+        {{ include('@Generator/meta_entity/_delete_form.html.twig') }}
+    {% endif %}
+
+
+{% endblock %}
+
+{% block js %}
+    {{ parent() }}
+    <script>
+        vue.computed.targetEntityDefault = function() {
+            return this.form.meta_entity.name.charAt(0).toLowerCase() + this.form.meta_entity.name.slice(1);
+        };
+        vue.methods = {
+            isRelationType(type) {
+                return ["many_to_one", "many_to_many", "one_to_many", "one_to_one"].includes(type);
+            },
+        };
+        vue.watch = {
+            'form.meta_entity.metaProperties': {
+                deep: true,
+                handler: function (metaProperties) {
+                    for (const metaProperty of Object.values(metaProperties)) {
+                        if (metaProperty.type === 'one_to_many') {
+                            metaProperty.inversedBy = null;
+                            metaProperty.mappedBy = metaProperty.mappedBy || this.targetEntityDefault;
+                        } else if (this.isRelationType(metaProperty.type)) {
+                            metaProperty.mappedBy = null;
+                            metaProperty.inversedBy = metaProperty.inversedBy || this.targetEntityDefault;
+                        }
+                    }
+                }
+            },
+            'form.meta_entity.traits': function (traits) {
+                if (traits.includes('BlameableTrait')) {
+                    if (!this.form.meta_entity.interfaces.includes('BlameableInterface')) {
+                        this.form.meta_entity.interfaces.push('BlameableInterface');
+                    }
+                } else {
+                    var searchIndex = this.form.meta_entity.interfaces.indexOf('BlameableInterface');
+                    if (searchIndex !== -1) {
+                        this.form.meta_entity.interfaces.splice(searchIndex, 1);
+                    }
+                }
+
+                if (traits.includes('TimestampableTrait')) {
+                    if (!this.form.meta_entity.interfaces.includes('TimestampableInterface')) {
+                        this.form.meta_entity.interfaces.push('TimestampableInterface');
+                    }
+                } else {
+                    var searchIndex = this.form.meta_entity.interfaces.indexOf('TimestampableInterface');
+                    if (searchIndex !== -1) {
+                        this.form.meta_entity.interfaces.splice(searchIndex, 1);
+                    }
+                }
+            }
+        };
+    </script>
+{% endblock %}

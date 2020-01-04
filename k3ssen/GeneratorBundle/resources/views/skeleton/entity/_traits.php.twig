@@ -1,0 +1,10 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{% block traits %}
+{% for trait in meta_entity.traits %}
+
+    use {{ trait }};
+{%- if loop.last %}
+
+{% endif %}
+{% endfor %}
+{% endblock %}

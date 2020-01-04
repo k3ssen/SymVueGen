@@ -1,0 +1,65 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{# @var property \K3ssen\GeneratorBundle\Entity\MetaProperty #}
+{% block property_methods %}
+{% block property_methods_id %}
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+{% endblock %}
+{% for property in meta_entity.metaProperties %}
+
+{% if 'Collection' in property.returnType %}{{ block('property_collection_methods') }}{% else %}
+    public function get{{ property.name | classify }}(): {{ property.returnType }}
+    {
+        return $this->{{ property.name }};
+    }
+
+    public function set{{ property.name | classify }}({{ property.returnType }} ${{ property.name }}): self
+    {
+        $this->{{ property.name }} = ${{ property.name }};
+        return $this;
+    }
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block property_collection_methods %}
+    /**
+     * @return ArrayCollection|{{ property.targetEntityName }}[]
+     */
+    public function get{{ property.name | classify }}(): {{ property.returnType }}
+    {
+        return $this->{{ property.name }};
+    }
+
+    public function add{{ property.name | singularize | classify }}({{ property.targetEntityName }} ${{ property.name | singularize }}): self
+    {
+        if (!$this->{{ property.name }}->contains(${{ property.name | singularize }})) {
+            $this->{{ property.name }}->add(${{ property.name | singularize }});
+{% if property.type == 'many_to_many' and (property.inversedBy or property.mappedBy) %}
+            ${{ property.name | singularize }}->add{{ (property.inversedBy|default(property.mappedBy)) | singularize | classify }}($this);
+{% elseif property.mappedBy %}
+            ${{ property.name | singularize }}->set{{ property.mappedBy | classify }}($this);
+{% endif %}
+        }
+        return $this;
+    }
+
+    public function remove{{ property.name | singularize | classify }}({{ property.targetEntityName }} ${{ property.name | singularize }}): self
+    {
+        if ($this->{{ property.name }}->contains(${{ property.name | singularize }})) {
+            $this->{{ property.name }}->removeElement(${{ property.name | singularize }});
+{% if property.type == 'many_to_many' and (property.inversedBy or property.mappedBy) %}
+            ${{ property.name | singularize }}->remove{{ (property.inversedBy|default(property.mappedBy)) | singularize | classify }}($this);
+{% endif %}
+        }
+{% if property.type != 'many_to_many' and (property.mappedBy or property.inversedBy) %}
+        if (${{ property.name | singularize }}->get{{ (property.inversedBy|default(property.mappedBy)) | classify }}() === $this) {
+            ${{ property.name | singularize }}->set{{ (property.inversedBy|default(property.mappedBy)) | classify }}(null);
+        }
+{% endif %}
+        return $this;
+    }
+{% endblock %}

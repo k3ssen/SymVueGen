@@ -1,0 +1,7 @@
+#index:
+#    path: /meta_entity/{id}/edit
+#    controller: K3ssen\GeneratorBundle\Controller\MetaEntityController::edit
+
+controllers:
+    resource: ../../Controller/
+    type: annotation

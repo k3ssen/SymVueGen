@@ -1,0 +1,13 @@
+{# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
+{% block methods %}
+
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, {{ meta_entity.name }}::class);
+    }
+
+    public function createBasicQueryBuilder(): QueryBuilder
+    {
+        return parent::createQueryBuilder('{{ meta_entity.name | tableize }}');
+    }
+{% endblock %}

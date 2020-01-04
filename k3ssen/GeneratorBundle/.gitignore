@@ -1,0 +1,9 @@
+.idea/*
+vendor/
+composer.lock
+phpunit.xml
+*.phar
+Tests/cache/*
+Tests/logs/*
+bin/*
+.env
