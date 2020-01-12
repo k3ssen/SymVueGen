@@ -2,11 +2,13 @@
 {# @var property \K3ssen\GeneratorBundle\Entity\MetaProperty #}
 {% block property_methods %}
 {% block property_methods_id %}
+{% if skip_id|default(false) == false %}
 
     public function getId(): ?int
     {
         return $this->id;
     }
+{% endif %}
 {% endblock %}
 {% for property in meta_entity.metaProperties %}
 

@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 namespace K3ssen\GeneratorBundle\Form\Extension;
 
+use K3ssen\GeneratorBundle\Vue\VueDataStorage;
 use Symfony\Component\Form\AbstractTypeExtension;
+use Symfony\Component\Form\ChoiceList\View\ChoiceGroupView;
+use Symfony\Component\Form\ChoiceList\View\ChoiceView;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormEvent;
@@ -15,6 +18,16 @@ use Symfony\Component\PropertyAccess\PropertyAccessor;
 
 class ChoiceTypeExtension extends AbstractTypeExtension
 {
+    /**
+     * @var VueDataStorage
+     */
+    private $vueDataStorage;
+
+    public function __construct(VueDataStorage $vueDataStorage)
+    {
+        $this->vueDataStorage = $vueDataStorage;
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -35,6 +48,7 @@ class ChoiceTypeExtension extends AbstractTypeExtension
 
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
+        $this->setChoicesVModel($view);
         $attr = $view->vars['attr'] ?? [];
 
         if ($options['tags']) {
@@ -42,6 +56,51 @@ class ChoiceTypeExtension extends AbstractTypeExtension
         }
 
         $view->vars['attr'] = $attr;
+    }
+
+    protected function setChoicesVModel(FormView $view)
+    {
+        $choices = [];
+        $this->setChoiceVModelData($view->vars['choices'], $choices);
+        $vChoicesModelName = $this->getVueChoicesModelName($view);
+
+        $this->vueDataStorage->addData($vChoicesModelName, $choices);
+
+        $view->vars['attr'][':items'] = $view->vars['attr'][':items'] ?? $vChoicesModelName;
+    }
+
+    protected function setChoiceVModelData(array $choiceSet, array &$choices)
+    {
+        foreach ($choiceSet as $choiceOrGroup) {
+            if ($choiceOrGroup instanceof ChoiceGroupView) {
+                $choices[] = ['header' => $choiceOrGroup->label];
+                $this->setChoiceVModelData($choiceOrGroup->choices, $choices);
+            } elseif ($choiceOrGroup instanceof ChoiceView) {
+                $choices[] = [
+                    'text' => $choiceOrGroup->label,
+                    'value' => $choiceOrGroup->value,
+                    'attr' => $choiceOrGroup->attr,
+                ];
+            }
+        }
+    }
+
+    protected function getVueChoicesModelName(FormView $view): string
+    {
+        $name = $view->parent ? $this->getVueChoicesModelName($view->parent) : 'form_choices';
+        // Numeric would imply we're dealing with a Collection. In that case just return the (parent) name without
+        // appending anything. This way all collection-items will share the same choices-model.
+        if (is_numeric($view->vars['name'])) {
+            // If you need choices per-item, then use the commented line below.
+            //return $name . '['.$view->vars['name'].']';
+            return $name;
+        } else {
+            if ($name) {
+                $name .= '.';
+            }
+            $name .= $view->vars['name'];
+        }
+        return $name;
     }
 
     protected function addTagsFieldListener(FormBuilderInterface $builder, ?callable $createCallback = null)
@@ -57,6 +116,9 @@ class ChoiceTypeExtension extends AbstractTypeExtension
 
     protected function addChoice(FormInterface $form, $choiceValue)
     {
+        if (!$choiceValue) {
+            return;
+        }
         $formName = $form->getName();
         $parentForm = $form->getParent();
         if (!$parentForm) {
@@ -67,8 +129,7 @@ class ChoiceTypeExtension extends AbstractTypeExtension
         if (in_array($choiceValue, $options['choices'])) {
             return;
         }
-
-        $options['choices'] = array_merge($options['choices'], [$choiceValue => $choiceValue]);
+        $options['choices'][$choiceValue] = $choiceValue;
         $options['data'] = $choiceValue;
 
         $parentForm->add($formName, ChoiceType::class, $options);

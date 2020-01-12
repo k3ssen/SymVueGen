@@ -23,6 +23,7 @@
         "setup": "composer install && yarn install && yarn build"
     },
     "dependencies": {
+        "pluralize": "^8.0.0",
         "vue": "^2.6.11",
         "vuetify": "^2.1.15",
         "vuex": "^3.1.2"

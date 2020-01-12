@@ -2,14 +2,15 @@
 {# @var property \K3ssen\GeneratorBundle\Entity\MetaProperty #}
 {% block properties %}
 {%- block id_property %}
+{% if skip_id|default(false) == false %}
 
     /**
-     * @var int
-     * @ORM\Column(name="id", type="integer")
      * @ORM\Id
+     * @ORM\Column(type="integer")
      * @ORM\GeneratedValue(strategy="AUTO")
      */
-    private int $id;
+    private ?int $id = null;
+{% endif %}
 {% endblock %}
 {%- for property in meta_entity.metaProperties %}
 

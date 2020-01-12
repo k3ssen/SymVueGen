@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace K3ssen\GeneratorBundle\Form;
 
 use K3ssen\GeneratorBundle\Entity\MetaProperty;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -25,20 +24,6 @@ class MetaPropertyType extends AbstractType
 
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        $types = array_combine($keys = array_keys(MetaProperty::TYPES), $keys);
-        $types[MetaProperty::MANY_TO_ONE] = 'm2o (ManyToOne / mto)';
-        $types[MetaProperty::ONE_TO_MANY] = 'o2m (OneToMany / otm)';
-        $types[MetaProperty::MANY_TO_MANY] = 'm2m (ManyToMany / mtm)';
-        $types[MetaProperty::ONE_TO_ONE] = 'o2o (OneToOne / oto)';
-
-        $entityDir = $this->projectDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Entity';
-        $finder = new Finder();
-        /** @var \SplFileInfo $file */
-        $entityNames = [];
-        foreach ($finder->in($entityDir)->contains('@ORM\Entity') as $file ) {
-            $entityNames[] = str_replace('.php', '', $file->getFilename());
-        }
-
         $builder
             ->add('name', null, [
                 'row_attr' => [
@@ -52,12 +37,17 @@ class MetaPropertyType extends AbstractType
                 'row_attr' => [
                     'class' => 'col-6 col-sm-3 col-md-2',
                 ],
-                'choices' => array_combine($types, array_keys(MetaProperty::TYPES)),
+                'attr' => [
+                    ':items' => 'types',
+                    ':filter' => 'filterTypes',
+                    ':messages' => 'typeMessage($$.type, $$.unsigned)'
+                ],
+                'choices' => $this->getTypeChoices(),
             ])
             ->add('length', null, [
                 'row_attr' => [
                     'class' => 'col-6 col-sm-3 col-md-2',
-                    'v-if' => '!isRelationType($$.type)',
+                    'v-if' => 'hasLength($$.type)',
                 ],
                 'attr' => [
                     ':label' => '$$.type === "decimal" ? "precision" : "length"',
@@ -70,8 +60,17 @@ class MetaPropertyType extends AbstractType
                     'v-if' => '$$.type === "decimal"',
                 ],
             ])
+            ->add('unsigned', null, [
+                'row_attr' => [
+                    'class' => 'col-6 col-sm-3 col-md-2',
+                    'v-if' => 'hasUnsigned($$.type)',
+                ],
+                'attr' => [
+                    'messages' => 'Only positives',
+                ],
+            ])
             ->add('targetEntity', ChoiceType::class, [
-                'choices' => array_combine($entityNames, $entityNames),
+                'choices' => $this->getEntityChoices(),
                 'tags' => true,
                 'row_attr' => [
                     'class' => 'col-6 col-sm-3 col-md-2',
@@ -79,7 +78,7 @@ class MetaPropertyType extends AbstractType
                 ],
                 'attr' => [
                     ':required' => 'isRelationType($$.type)',
-                ]
+                ],
             ])
             ->add('mappedBy', null, [
                 'row_attr' => [
@@ -89,6 +88,7 @@ class MetaPropertyType extends AbstractType
                 'attr' => [
                     ':disabled' => '$$.inversedBy > ""',
                     ':messages' => '$$.inversedBy > "" ? "InversedBy already set" : ""',
+                    ':required' => '$$.type === "one_to_many"'
                 ],
             ])
             ->add('inversedBy', null, [
@@ -105,56 +105,90 @@ class MetaPropertyType extends AbstractType
             ->add('nullable', null, [
                 'label' => 'N',
                 'row_attr' => [
-                    'title' => 'Nullable',
                     'class' => 'col-4 col-sm-2 col-md-1',
                     'v-if' => '!["many_to_many"].includes($$.type)',
                 ],
                 'attr' => [
-                    ':messages' => '$$.type === "one_to_many" ? "On mappedBy" : ""',
+                    'messages' => 'nullable',
                 ]
             ])
             ->add('unique', null, [
                 'label' => 'U',
                 'row_attr' => [
-                    'title' => 'Unique',
                     'class' => 'col-4 col-sm-2 col-md-1',
-                    'v-if' => '!["many_to_many"].includes($$.type)',
+                    'v-if' => 'canBeUnique($$.type)',
                 ],
                 'attr' => [
-                    ':messages' => '$$.type === "one_to_many" ? "On mappedBy" : ""',
+                    'messages' => 'unique',
                 ]
             ])
             ->add('orphanRemoval', null, [
                 'label' => 'OR',
                 'row_attr' => [
-                    'title' => 'Orphan removal',
                     'class' => 'col-4 col-sm-2 col-md-1',
-                    'v-if' => 'isRelationType($$.type) && $$.type !== "one_to_one"',
+                    'v-if' => '["one_to_many", "many_to_one"].includes($$.type)',
                 ],
                 'attr' => [
-                    ':messages' => '$$.type === "many_to_one" ? "Will be set on the opposing side" : ""',
+                    'messages' => 'Orphan removal',
                 ]
+            ])
+            ->add('assertValid', null, [
+                'label' => 'AV',
+                'row_attr' => [
+                    'class' => 'col-4 col-sm-2 col-md-1',
+                    'v-if' => 'isRelationType($$.type)',
+                ],
+                'attr' => [
+                    'messages' => '@Assert\Valid',
+                ],
+            ])
+            ->add('indexed', null, [
+                'label' => 'Idx',
+                'row_attr' => [
+                    'class' => 'col-4 col-sm-2 col-md-1',
+                    'v-if' => '(!$$.unique || $$.unique == "0") && canBeUnique($$.type)',
+                    'title' => 'Add index if you expect this field to be searched on (eg used in where-condititons)',
+                ],
+                'attr' => [
+                    'messages' => 'Add index',
+                ],
             ])
         ;
 
-//        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event) {
-//            $data = $event->getData();
-//            $this->addTargetEntityChoice($event->getForm(), $data->getTargetEntity());
-//        });
-//
-//        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event) {
-//            $data = $event->getData();
-//            $this->addTargetEntityChoice($event->getForm(), $data['targetEntity']);
-//        });
+        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event) {
+            /** @var MetaProperty $data */
+            $data = $event->getData();
+            if ($data->getTargetEntity() && strpos($data->getTargetEntity(), 'App\\Entity') !== false) {
+                $form = $event->getForm();
+                $options = $form->get('targetEntity')->getConfig()->getOptions();
+                $options['data'] = $data->getTargetEntityName();
+                $form->add('targetEntity', ChoiceType::class, $options);
+            }
+        });
     }
-//
-//    protected function addTargetEntityChoice(FormInterface $form, $targetEntity)
-//    {
-//        $config = $form->get('targetEntity')->getConfig();
-//        $options = $config->getOptions();
-//        $options['choices'] = array_merge($options['choices'], [$targetEntity => $targetEntity]);
-//        $form->add('targetEntity', ChoiceType::class, $options);
-//    }
+
+    public function getTypeChoices(): array
+    {
+        $type = array_keys(MetaProperty::TYPES);
+        return array_combine($type, $type);
+    }
+
+    protected function getEntityChoices(): array
+    {
+        $finder = new Finder();
+        /** @var \SplFileInfo $file */
+        $entityNames = [];
+        foreach ($finder->in($this->getEntityDir())->contains('@ORM\Entity') as $file ) {
+            $entityNames[] = str_replace('.php', '', $file->getFilename());
+        }
+
+        return array_combine($entityNames, $entityNames);
+    }
+
+    protected function getEntityDir(): string
+    {
+        return $this->projectDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Entity';
+    }
 
 
     public function configureOptions(OptionsResolver $resolver)

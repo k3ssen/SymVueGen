@@ -9,6 +9,7 @@ use K3ssen\GeneratorBundle\Generator\EntityReader;
 use K3ssen\GeneratorBundle\Generator\EntityGenerator;
 use K3ssen\GeneratorBundle\Repository\MetaEntityRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -18,6 +19,13 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 class MetaEntityController extends AbstractController
 {
+    private string $projectDir;
+
+    public function __construct(string $projectDir)
+    {
+        $this->projectDir = $projectDir;
+    }
+
     /**
      * @Route("/", name="generator_meta_entity_index", methods={"GET"})
      */
@@ -25,15 +33,28 @@ class MetaEntityController extends AbstractController
     {
         return $this->render('@Generator/meta_entity/index.vue.twig', [
             'meta_entities' => $metaEntityRepository->findAll(),
+            'entities' => $this->getEntities(),
         ]);
     }
 
-    /**
-     * @Route("/new", name="generator_meta_entity_new", methods={"GET","POST"})
-     */
-    public function new(Request $request, EntityReader $classToMetaEntityReader): Response
+    protected function getEntities(): array
     {
-        $metaEntity = new MetaEntity();
+        $entityDir = $this->projectDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Entity';
+        $finder = new Finder();
+        /** @var \SplFileInfo $file */
+        $entityNames = [];
+        foreach ($finder->in($entityDir)->contains('@ORM\Entity') as $file ) {
+            $entityNames[] = str_replace('.php', '', $file->getFilename());
+        }
+        return $entityNames;
+    }
+
+    /**
+     * @Route("/new/{entityName}", name="generator_meta_entity_new", methods={"GET","POST"})
+     */
+    public function new(Request $request, ?string $entityName = null): Response
+    {
+        $metaEntity = $entityName ? EntityReader::readEntity($entityName) : new MetaEntity();
         $form = $this->createForm(MetaEntityType::class, $metaEntity);
         $form->handleRequest($request);
 
@@ -44,21 +65,12 @@ class MetaEntityController extends AbstractController
 
             return $this->redirectToRoute('generator_meta_entity_index');
         }
+
         return $this->render('@Generator/meta_entity/edit.vue.twig', [
             'meta_entity' => $metaEntity,
             'form' => $form->createView(),
         ]);
     }
-//
-//    /**
-//     * @Route("/{id}", name="meta_entity_show", methods={"GET"})
-//     */
-//    public function show(MetaEntity $metaEntity): Response
-//    {
-//        return $this->render('meta_entity/show.html.twig', [
-//            'meta_entity' => $metaEntity,
-//        ]);
-//    }
 
     /**
      * @Route("/{id}/edit", name="generator_meta_entity_edit", methods={"GET","POST"})
@@ -73,7 +85,15 @@ class MetaEntityController extends AbstractController
 
             $this->addFlash('success', 'saved successfully');
 
+            if ($request->get('generate')) {
+                return $this->redirectToRoute('generator_meta_entity_generate', ['id' => $metaEntity->getId()]);
+            }
+
             return $this->redirectToRoute('generator_meta_entity_edit', ['id' => $metaEntity->getId()]);
+        }
+
+        if (class_exists($metaEntity->getClass())) {
+            $this->addFlash('warning', sprintf('The entity "%s" already exists. This entity will be overwritten if you choose to generate this form.', $metaEntity->getName()));
         }
 
         return $this->render('@Generator/meta_entity/edit.vue.twig', [

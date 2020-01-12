@@ -1,6 +1,7 @@
 {# @var meta_entity \K3ssen\GeneratorBundle\Entity\MetaEntity #}
 {% block usages %}
-{% for use in meta_entity.uses %}
-{{ use }}
+{% set usages = usages is defined ? usages : meta_entity.usages %}
+{% for usage in usages %}
+use {{ usage }};
 {% endfor %}
 {% endblock %}

@@ -14,3 +14,5 @@ services:
     K3ssen\GeneratorBundle\Controller\:
         resource: '../../Controller'
         tags: ['controller.service_arguments']
+        bind:
+            $projectDir: '%kernel.project_dir%'

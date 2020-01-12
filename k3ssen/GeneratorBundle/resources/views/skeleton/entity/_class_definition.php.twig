@@ -10,7 +10,7 @@
         {# TODO: add parent-class to meta_entity #}
     {%- endblock %}
     {%- block implements -%}
-        {%- for interface in meta_entity.interfaces -%}
+        {%- for interface in meta_entity.interfaceNames -%}
             {%- if loop.first %} implements {% else %}, {% endif -%}
             {{- interface -}}
         {%- endfor -%}

@@ -24,9 +24,8 @@ class EntityReader
         $reflectionClass = new ReflectionClass($metaEntity->getClass());
         $this->setTraits($metaEntity, $reflectionClass);
         $this->setInterfaces($metaEntity, $reflectionClass);
-
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-            $this->setMetaProperty($metaEntity, $reflectionProperty);
+            $this->setMetaProperty($metaEntity, $reflectionProperty, $reflectionClass);
         }
         return $metaEntity;
     }
@@ -35,9 +34,7 @@ class EntityReader
     {
         $interfaces = $reflectionClass->getInterfaces();
         foreach ($interfaces as $interface) {
-            // FIXME: alias isn't taken into account yet
-            $metaEntity->addUse('use ' . $interface->getName(). ';');
-            $metaEntity->addInterface($interface->getShortName());
+            $metaEntity->addInterface($interface->getName());
         }
     }
 
@@ -45,35 +42,35 @@ class EntityReader
     {
         $traits = $reflectionClass->getTraits();
         foreach ($traits as $trait) {
-            // FIXME: alias isn't taken into account yet
-            $metaEntity->addUse('use ' . $trait->getName(). ';');
-            $metaEntity->addTrait($trait->getShortName());
+            $metaEntity->addTrait($trait->getName());
             foreach ($trait->getProperties() as $property) {
                 $this->traitPropertyNames[] = $property->getName();
             }
         }
     }
 
-    protected function setMetaProperty(MetaEntity $metaEntity, ReflectionProperty $reflectionProperty)
+    protected function setMetaProperty(MetaEntity $metaEntity, ReflectionProperty $reflectionProperty, ReflectionClass $reflectionClass)
     {
         $name = $reflectionProperty->getName();
         $docComment = $reflectionProperty->getDocComment();
-        if (!$docComment || in_array($name, $this->traitPropertyNames)) {
+        if (!$docComment || in_array($name, $this->traitPropertyNames) || $name === 'id') {
             return null;
         }
         $metaProperty = new MetaProperty($metaEntity);
-        $metaProperty->setName($reflectionProperty->getName());
-        $this->setType($metaProperty, $docComment);
+        $metaProperty->setName($name);
+        $this->setType($metaProperty, $docComment, $reflectionClass);
         $this->setNullable($metaProperty, $docComment);
         $this->setUnique($metaProperty, $docComment);
 
         $metaEntity->addMetaProperty($metaProperty);
     }
 
-    protected function setType(MetaProperty $metaProperty, string $docComment)
+    protected function setType(MetaProperty $metaProperty, string $docComment, ReflectionClass $reflectionClass)
     {
         if ($match = $this->findMatch($docComment, 'type')) {
             $metaProperty->setType($match);
+            $this->setUnsigned($metaProperty, $docComment);
+            $this->setIndexed($metaProperty, $reflectionClass);
             return;
         } elseif (strpos($docComment, 'ManyToOne') !== false) {
             $metaProperty->setType(MetaProperty::MANY_TO_ONE);
@@ -110,6 +107,7 @@ class EntityReader
             $this->setMappedBy($metaProperty, $docComment);
             $this->setInversedBy($metaProperty, $docComment);
             $this->setOrphanRemoval($metaProperty, $docComment);
+            $this->setAssertValid($metaProperty, $docComment);
         }
     }
 
@@ -123,7 +121,7 @@ class EntityReader
     protected function setInversedBy(MetaProperty $metaProperty, string $docComment)
     {
         if ($match = $this->findMatch($docComment, 'inversedBy')) {
-            $metaProperty->setMappedBy($match);
+            $metaProperty->setInversedBy($match);
         }
     }
 
@@ -148,9 +146,28 @@ class EntityReader
         }
     }
 
+    protected function setUnsigned(MetaProperty $metaProperty, string $docComment)
+    {
+        if ($match = $this->findMatch($docComment, '"?unsigned"?')) {
+            $metaProperty->setUnsigned(true);
+        }
+    }
+
+    protected function setAssertValid(MetaProperty $metaProperty, string $docComment)
+    {
+        $metaProperty->setAssertValid((bool) preg_match('/@Assert\\\\Valid/', $docComment, $matches));
+    }
+
+    protected function setIndexed(MetaProperty $metaProperty, ReflectionClass $reflectionClass)
+    {
+        $docComment = $reflectionClass->getDocComment();
+        $indexed = stripos($docComment, sprintf('columns={"%s"}', $metaProperty->getName())) !== false;
+        $metaProperty->setIndexed($indexed);
+    }
+
     protected function findMatch(string $docComment, string $searchProperty): ?string
     {
-        $pattern = '/'.$searchProperty.' ?= ?'.'"?(\w+)"?/';
+        $pattern = '/'.$searchProperty.' ?= ?'.'"?([\w\\\\]+)"?/';
         preg_match($pattern, $docComment, $matches);
         return $matches[1] ?? null;
     }

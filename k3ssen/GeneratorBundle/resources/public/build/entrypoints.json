@@ -3,11 +3,11 @@
     "generator": {
       "js": [
         "/build/runtime.js",
-        "/build/0.js",
+        "/build/vendors~generator.js",
         "/build/generator.js"
       ],
       "css": [
-        "/build/0.css",
+        "/build/vendors~generator.css",
         "/build/generator.css"
       ]
     }

@@ -10,11 +10,13 @@ class EntityAppender
 {
     use GeneratorFileLocatorTrait;
 
-    /** @var Environment */
-    protected $twig;
+    protected Environment $twig;
 
-    public function __construct(Environment $twig) {
+    protected string $projectDir;
+
+    public function __construct(Environment $twig, string $projectDir) {
         $this->twig = $twig;
+        $this->projectDir = $projectDir;
     }
 
     public function appendFields(MetaEntity $pseudoMetaEntity): string
@@ -36,9 +38,6 @@ class EntityAppender
     {
         $currentMetaEntity = EntityReader::readEntity($pseudoMetaEntity->getClass());
         $diffMetaEntity = clone $pseudoMetaEntity;
-        foreach ($currentMetaEntity->getUses() as $use) {
-            $diffMetaEntity->removeUse($use);
-        }
         foreach ($currentMetaEntity->getMetaProperties() as $property) {
             foreach ($diffMetaEntity->getMetaProperties() as $diffProperty) {
                 if ($diffProperty->getName() === $property->getName()) {
@@ -51,14 +50,16 @@ class EntityAppender
 
     protected function addUsages(MetaEntity $diffMetaEntity, string &$currentContent)
     {
-//        //First we check and remove usages that are already defined.
-//        foreach ($diffMetaEntity->getUsages() as $usageNamespace => $usageAlias) {
-//            if (strpos($currentContent, $usageNamespace) !== false) {
-//                $diffMetaEntity->removeUsage($usageNamespace);
-//            }
-//        }
+        //First we check and remove usages that are already defined.
+        $usages = [];
+        foreach ($diffMetaEntity->getUsages() as $usage) {
+            if (strpos($currentContent, $usage) === false) {
+                $usages[] = $usage;
+            }
+        }
         $usageContent = $this->twig->render('@Generator/skeleton/entity/_usages.php.twig', [
             'meta_entity' => $diffMetaEntity,
+            'usages' => $usages,
         ]);
 
         $this->insertStrAfterLastMatch($currentContent, $usageContent, '/use (\w+\\\\.+);/');
@@ -84,7 +85,7 @@ class EntityAppender
             'meta_entity' => $diffMetaEntity,
             'skip_id' => true,
         ]);
-        $this->insertStrAfterLastMatch($currentContent, $propertyContent, '/(protected|private|public) \$\w+;/');
+        $this->insertStrAfterLastMatch($currentContent, $propertyContent, '/(protected|private|public) ?\??\w* \$\w+;/');
     }
 
     protected function getAddedMethods(MetaEntity $diffMetaEntity, string &$currentContent)

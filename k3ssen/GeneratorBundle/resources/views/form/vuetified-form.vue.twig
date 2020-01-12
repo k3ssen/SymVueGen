@@ -87,24 +87,12 @@
             :clearable="true"
             :deletable-chips="true"
             item-value="value"
+            :auto-select-first="true"
             :return-object="false" {# otherwise combobox will return object-value (somehow this is true for combobox by default, while it isnt for autocomplete) #}
             autocomplete="off" {# disables native browser autocomplete functionaly #}
             {{ input_style|default('outlined') }}
             {% if multiple %} :multiple="true"{% endif %}
-            :items="[
-                {%- if preferred_choices|length > 0 -%}
-                    {% set options = preferred_choices %}
-                    {{- block('choice_widget_options') -}}
-                    {%- if choices|length > 0 and separator is not none -%}
-                    {
-                        text: '{{ separator }}',
-                        divider: true,
-                    },
-                    {%- endif -%}
-                {%- endif -%}
-                {%- set options = choices -%}
-                {{- block('choice_widget_options') -}}
-            ]"
+            {# items are supposed to be set through the ChoiceTypeExtension #}
             {{ block('widget_attributes') }}
     >
     {% if useCombobox %}
@@ -145,27 +133,9 @@
 {#    {% endfor %}#}
 {#{%- endblock choice_widget_disabled_options -%}#}
 
-{%- block choice_widget_options -%}
-    {% for group_label, choice in options %}
-        {%- if choice is iterable -%}
-            {
-                text: '{{ choice_translation_domain is same as(false) ? group_label : group_label|trans({}, choice_translation_domain) }}',
-                header: true,
-            },
-            {% set options = choice %}
-            {{- block('choice_widget_options') -}}
-        {%- else -%}
-            {
-                text: '{{ choice_translation_domain is same as(false) ? choice.label : choice.label|trans({}, choice_translation_domain) }}',
-                value: '{{ choice.value }}'
-            },
-        {%- endif -%}
-    {% endfor %}
-{%- endblock choice_widget_options -%}
-
 {%- block collection_widget -%}
     <div {{ block('widget_container_attributes') }}>
-        <strong>{{ label }}</strong>
+        <strong>{{ label | raw }}</strong>
         {{ add_vue_data('form.' ~ form.vars.id ~ '.prototype' , "{
             template: `"~ block('collection_widget_subform') ~"`,
             delimiters: ['{', '}'],
@@ -191,7 +161,7 @@
         <div class="row pl-3">
             {{ form_widget((field is defined ? field : prototype), {label: false}) }}
             <div class="col-4 col-sm-3 col-md-1">
-                <v-btn {% if field is not defined %}@click="$emit('remove')"{% else %}onClick="this.closest('.subform').remove()"{% endif %}>
+                <v-btn color="error" {% if field is not defined %}@click="$emit('remove')"{% else %}onClick="this.closest('.subform').remove()"{% endif %}>
                     Remove
                 </v-btn>
             </div>

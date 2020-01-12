@@ -6,18 +6,20 @@
 
 {% block body %}
     {{ parent() }}
+
     <h1>Edit MetaEntity</h1>
 
     {{ form_start(form) }}
     {{ form_widget(form) }}
-    <v-btn type="submit" color="success">{{ button_label|default('Save') }}</v-btn>
+        <v-btn type="submit" color="success">{{ button_label|default('Save') }}</v-btn>
+        <v-btn type="submit" name="generate" color="success" value="generate">Save and generate</v-btn>
     {{ form_end(form) }}
 
-    {% if meta_entity.id %}
-        <v-btn href="{{ path('generator_meta_entity_generate', {id: meta_entity.id}) }}">Generate</v-btn>
+{#    {% if meta_entity.id %}#}
+{#        <v-btn href="{{ path('generator_meta_entity_generate', {id: meta_entity.id}) }}">Generate</v-btn>#}
 
-        {{ include('@Generator/meta_entity/_delete_form.html.twig') }}
-    {% endif %}
+{#        {{ include('@Generator/meta_entity/_delete_form.html.twig') }}#}
+{#    {% endif %}#}
 
 
 {% endblock %}
@@ -25,13 +27,73 @@
 {% block js %}
     {{ parent() }}
     <script>
+        // vue.data = function () { return {
+        //     showLengthOption: false
+        // }};
         vue.computed.targetEntityDefault = function() {
             return this.form.meta_entity.name.charAt(0).toLowerCase() + this.form.meta_entity.name.slice(1);
         };
+        vue.computed.types = function() {
+            return this.form_choices.meta_entity.metaProperties.type;
+        };
+        vue.computed.showLengthOption = function () {
+            return !this.form.meta_entity.hideLengthField;
+        };
         vue.methods = {
+            hasLength(type) {
+                // Note that numeric types can have a length as well, but without using zerofill this probably is kinda
+                // pointless. Zerofill option has purposely not been implemented as this doesn't seem like an option
+                // anyone would frequently need. Also, php/symfony probably aren't quite capable of dealing with
+                // integers that have zerofill, so you might be better of using strings for that anyway.
+                return type === "string";
+            },
+            canBeUnique(type) {
+                return !this.isRelationType(type) && !['text', 'blob', 'json', 'simple_array', 'array'].includes(type);
+            },
+            hasUnsigned(type) {
+                return this.isNumericType(type) || type === "float";
+            },
             isRelationType(type) {
                 return ["many_to_one", "many_to_many", "one_to_many", "one_to_one"].includes(type);
             },
+            isNumericType(type) {
+                return ["tinyint", "smallint", "mediumint", "integer", "bigint", "decimal"].includes(type);
+            },
+            typeMessage(type, unsigned) {
+                if (!this.isNumericType(type)) {
+                    return '';
+                }
+                if (unsigned === "1" || unsigned === true) {
+                    if (type === 'smallint') {
+                        return '0 to 65535';
+                    } else if (type === 'integer') {
+                        return '0 to 4.29 billion';
+                    } else if (type === 'bigint') {
+                        return '0 to 18.4 quintillion';
+                    }
+                } else {
+                    if (type === 'smallint') {
+                        return '-32768 to 32767';
+                    } else if (type === 'integer') {
+                        return '-2.14 billion to 2.14 billion';
+                    } else if (type === 'bigint') {
+                        return '-9.2 quintillion to 9.2 quintillion';
+                    }
+                }
+                return '';
+            },
+            filterTypes(item, queryText, itemText) {
+                const chars = queryText.split('');
+                let leftOverText = itemText;
+                for (const char of chars) {
+                    const index = leftOverText.indexOf(char);
+                    if (index === -1) {
+                        return false;
+                    }
+                    leftOverText = leftOverText.substr(index);
+                }
+                return true;
+            }
         };
         vue.watch = {
             'form.meta_entity.metaProperties': {
@@ -40,34 +102,27 @@
                     for (const metaProperty of Object.values(metaProperties)) {
                         if (metaProperty.type === 'one_to_many') {
                             metaProperty.inversedBy = null;
-                            metaProperty.mappedBy = metaProperty.mappedBy || this.targetEntityDefault;
+                            metaProperty.mappedBy = metaProperty.mappedBy || this.pluralize(this.targetEntityDefault);
                         } else if (this.isRelationType(metaProperty.type)) {
                             metaProperty.mappedBy = null;
-                            metaProperty.inversedBy = metaProperty.inversedBy || this.targetEntityDefault;
+                            var targetEntityDefault = this.targetEntityDefault;
+                            if (metaProperty.type === 'many_to_many') {
+                                targetEntityDefault = this.pluralize(targetEntityDefault);
+                            }
+                            metaProperty.inversedBy = metaProperty.inversedBy || targetEntityDefault;
                         }
                     }
                 }
             },
             'form.meta_entity.traits': function (traits) {
-                if (traits.includes('BlameableTrait')) {
-                    if (!this.form.meta_entity.interfaces.includes('BlameableInterface')) {
-                        this.form.meta_entity.interfaces.push('BlameableInterface');
-                    }
-                } else {
-                    var searchIndex = this.form.meta_entity.interfaces.indexOf('BlameableInterface');
-                    if (searchIndex !== -1) {
-                        this.form.meta_entity.interfaces.splice(searchIndex, 1);
-                    }
-                }
+                for (const trait of traits) {
+                    const interfaceValue = trait.replace(/Trait/g, 'Interface');
+                    const interfaceChoiceExists = this.form_choices.meta_entity.interfaces.filter((interfaceObject) => {
+                       return interfaceObject.value === interfaceValue;
+                    }).length;
 
-                if (traits.includes('TimestampableTrait')) {
-                    if (!this.form.meta_entity.interfaces.includes('TimestampableInterface')) {
-                        this.form.meta_entity.interfaces.push('TimestampableInterface');
-                    }
-                } else {
-                    var searchIndex = this.form.meta_entity.interfaces.indexOf('TimestampableInterface');
-                    if (searchIndex !== -1) {
-                        this.form.meta_entity.interfaces.splice(searchIndex, 1);
+                    if (!this.form.meta_entity.interfaces.includes(interfaceValue) && interfaceChoiceExists) {
+                        this.form.meta_entity.interfaces.push(interfaceValue);
                     }
                 }
             }

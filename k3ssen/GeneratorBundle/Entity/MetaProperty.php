@@ -7,10 +7,9 @@ use BadMethodCallException;
 use Doctrine\Common\Inflector\Inflector;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use InvalidArgumentException;
-use ReflectionClass;
+use phpDocumentor\Reflection\Types\Boolean;
 use Symfony\Component\Validator\Constraints as Assert;
-use Twig\Error\RuntimeError;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
  * @ORM\Entity(repositoryClass="K3ssen\GeneratorBundle\Repository\MetaPropertyRepository")
@@ -69,8 +68,9 @@ class MetaProperty
 
     /**
      * @ORM\Column(type="string")
+     * @Assert\NotBlank()
      */
-    private string $name = '';
+    private ?string $name = '';
 
     /**
      * @ORM\Column(type="boolean")
@@ -93,41 +93,71 @@ class MetaProperty
      * Should only apply to decimal type.
      * @ORM\Column(type="integer", nullable=true)
      */
-    private ?int $scale = null;
+    private ?int $scale = null; // Only for decimal type
+
+    /**
+     * Should only apply to decimal type.
+     * @ORM\Column(type="boolean", nullable=true, name="`unsigned`")
+     */
+    private ?bool $unsigned = null; // Only for numeric types (tinyint, smallint, mediumint, int, bigint)
 
     /**
      * @ORM\Column(type="string")
      */
-    private string $type = Types::STRING;
+    private ?string $type = Types::STRING;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private ?string $targetEntity = null;
+    private ?string $targetEntity = null; // Only for relationship types
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private ?string $mappedBy = null;
+    private ?string $mappedBy = null; // Only for relationship types
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private ?string $inversedBy = null;
+    private ?string $inversedBy = null; // Only for relationship types
 
     /**
      * @ORM\Column(type="boolean")
      */
-    private bool $orphanRemoval = false;
+    private bool $orphanRemoval = false; // Only for relationship types
 
     /**
-     * @ORM\Column(type="string", name="`default`")
+     * @ORM\Column(type="boolean")
+     */
+    private bool $assertValid = true; // Only for relationship types
+
+    /**
+     * @ORM\Column(type="string", name="`default`", nullable=true)
      */
     private ?string $default = null;
+
+    /**
+     * @ORM\Column(type="boolean", name="`indexed`", nullable=true)
+     */
+    private ?bool $indexed = null;
 
     public function __construct(MetaEntity $metaEntity)
     {
         $this->metaEntity = $metaEntity;
+    }
+
+    /**
+     * @Assert\Callback
+     */
+    public function validate(ExecutionContextInterface $context, $payload)
+    {
+        $type = $this->getType();
+        // check if the name is actually a fake name
+        if (!$this->isRelationship() && !array_key_exists($type, static::TYPES)) {
+            $context->buildViolation(sprintf('Type "%s" is not a valid type', $type))
+                ->atPath('type')
+                ->addViolation();
+        }
     }
 
     public function getId(): ?int
@@ -151,9 +181,9 @@ class MetaProperty
         return $this->name;
     }
 
-    public function setName(string $name): self
+    public function setName(?string $name): self
     {
-        $this->name = Inflector::camelize($name);
+        $this->name = $name ? Inflector::camelize($name) : null;
         return $this;
     }
 
@@ -204,7 +234,18 @@ class MetaProperty
         return $this;
     }
 
-    public function getType(): string
+    public function isUnsigned(): ?bool
+    {
+        return $this->unsigned;
+    }
+
+    public function setUnsigned(?bool $unsigned): self
+    {
+        $this->unsigned = $unsigned;
+        return $this;
+    }
+
+    public function getType(): ?string
     {
         return $this->type;
     }
@@ -214,9 +255,11 @@ class MetaProperty
         $returnType = static::TYPES[$this->getType()];
         if (!$returnType) {
             $returnType = $this->getTargetEntityName();
-        } if ($this->isNullable() || !$this->getDefault()) {
-            return '?' . $returnType;
-    }
+        }
+        // If null is not allowed, then Assert/NotNull should be used instead of throwing exceptions.
+        if ($returnType !== 'Collection') {
+            $returnType = '?' . $returnType;
+        }
         return $returnType;
     }
 
@@ -225,24 +268,9 @@ class MetaProperty
         return in_array($this->getType(), [static::MANY_TO_ONE, static::ONE_TO_MANY, static::MANY_TO_MANY, static::ONE_TO_ONE], true);
     }
 
-    public function setType(string $type): self
+    public function setType(?string $type): self
     {
-        if (!array_key_exists($type, static::TYPES)) {
-            throw new InvalidArgumentException(sprintf('Type %s is not a valid type', $type));
-        }
         $this->type = $type;
-        switch ($type) {
-            case Types::DECIMAL:
-                $this->scale = 2;
-                break;
-            case static::ONE_TO_MANY:
-            case static::MANY_TO_MANY:
-            $this->getMetaEntity()
-                ->addUse('use Doctrine\Common\Collections\ArrayCollection;')
-                ->addUse('use Doctrine\Common\Collections\Collection;')
-            ;
-                break;
-        }
         return $this;
     }
 
@@ -251,7 +279,7 @@ class MetaProperty
         if (!$this->targetEntity || !$this->isRelationship()) {
             return null;
         }
-        if (strpos('\\', $this->targetEntity)) {
+        if (strpos($this->targetEntity, '\\') === false) {
             $this->targetEntity = $this->getMetaEntity()->getNamespace() . '\\' . $this->targetEntity;
         }
         return $this->targetEntity;
@@ -259,10 +287,6 @@ class MetaProperty
 
     public function setTargetEntity(?string $targetEntity): self
     {
-//        if (!$this->isRelationship()) {
-//            throw new BadMethodCallException('TargetEntity can only be set on relationship types.');
-//        }
-//        $this->getMetaEntity()->addUse(sprintf('use %s;', $targetEntity));
         $this->targetEntity = $targetEntity;
         return $this;
     }
@@ -270,7 +294,7 @@ class MetaProperty
     public function getTargetEntityName(): ?string
     {
         try {
-            if (strpos($this->getTargetEntity(), '\\')) {
+            if (strpos($this->getTargetEntity(), '\\') !== false) {
                 $parts = explode('\\', $this->getTargetEntity());
                 $targetEntityName = array_pop($parts);
                 return $targetEntityName;
@@ -288,7 +312,7 @@ class MetaProperty
 
     public function setMappedBy(?string $mappedBy)
     {
-        if (!in_array($this->getType(), [static::ONE_TO_MANY, static::MANY_TO_MANY, static::ONE_TO_ONE], true)) {
+        if ($mappedBy && !in_array($this->getType(), [static::ONE_TO_MANY, static::MANY_TO_MANY, static::ONE_TO_ONE], true)) {
             throw new BadMethodCallException(sprintf('MappedBy cannot be set on %s type.', $this->getType()));
         }
         $this->mappedBy = $mappedBy;
@@ -322,23 +346,22 @@ class MetaProperty
         return $this;
     }
 
+    public function isAssertValid(): bool
+    {
+        return $this->assertValid;
+    }
+
+    public function setAssertValid(bool $assertValid): self
+    {
+        $this->assertValid = $assertValid;
+        return $this;
+    }
+
     public function getDefault(): ?string
     {
         $default = $this->default;
-        if (!$default) {
-            if($this->isNullable()) {
-                $default = 'null';
-            } elseif (in_array($this->getType(), [Types::STRING, Types::TEXT])) {
-                $default = '""';
-            } elseif (in_array($this->getType(), [Types::INTEGER, Types::SMALLINT, Types::BIGINT])) {
-                $default = '0';
-            } elseif (in_array($this->getType(), [Types::BOOLEAN])) {
-                $default = 'false';
-            } elseif (in_array($this->getType(), [Types::ARRAY, Types::SIMPLE_ARRAY])) {
-                $default = '[]';
-            } elseif (in_array($this->getType(), [Types::DECIMAL])) {
-                $default = '"0.00"';
-            }
+        if (!$default && $this->getReturnType() !== 'Collection') {
+            $default = 'null';
         }
         return $default;
     }
@@ -346,6 +369,17 @@ class MetaProperty
     public function setDefault(?string $default): self
     {
         $this->default = $default;
+        return $this;
+    }
+
+    public function isIndexed(): ?bool
+    {
+        return !$this->isUnique() && !$this->isRelationship() && $this->indexed;
+    }
+
+    public function setIndexed(?bool $indexed): self
+    {
+        $this->indexed = $indexed;
         return $this;
     }
 
@@ -360,6 +394,7 @@ class MetaProperty
         } else {
             $annotations[] = $this->getOrmColumnAnnotation();
         }
+        $annotations = array_merge($annotations, $this->getAssertAnnotations());
         return $annotations;
     }
 
@@ -379,6 +414,9 @@ class MetaProperty
         if ($this->isUnique()){
             $annotationProperties[] = 'unique=true';
         }
+        if ($this->isUnsigned()){
+            $annotationProperties[] = 'options={"unsigned":true}';
+        }
 
         return sprintf('@ORM\Column(%s)', implode(', ', $annotationProperties));
     }
@@ -391,7 +429,7 @@ class MetaProperty
         } elseif ($mappedBy = $this->getInversedBy()) {
             $annotationProperties[] = sprintf('inversedBy="%s"', $this->getInversedBy());
         }
-        if ($this->isOrphanRemoval()) {
+        if ($this->isOrphanRemoval() && in_array($this->getType(), [static::MANY_TO_MANY, static::ONE_TO_MANY])) {
             $annotationProperties[] = 'orphanRemoval=true';
         }
         if ($this->getMappedBy()) {
@@ -409,5 +447,41 @@ class MetaProperty
         }
         $annotationProperties[] = 'onDelete="RESTRICT"';
         return sprintf('@ORM\JoinColumn(%s)', implode(', ', $annotationProperties));
+    }
+
+    public function getAssertAnnotations(): array
+    {
+        $asserts = [];
+        if (!$this->isNullable()) {
+            if ($this->getReturnType() === 'string') {
+                $asserts[] = '@Assert\NotBlank';
+            } elseif ($this->getReturnType() !== 'Collection') {
+                $asserts[] = '@Assert\NotNull';
+            }
+        }
+        if ($this->isRelationship() && $this->isAssertValid()) {
+            $asserts[] = '@Assert\Valid';
+        }
+
+        if ($this->getType() === Types::SMALLINT) {
+            $asserts[] = '@Assert\Range(min=−32768, max=32767)';
+        } elseif ($this->getType() === Types::SMALLINT && $this->isUnsigned()) {
+            $asserts[] = '@Assert\Range(min=0, max=65535 )';
+        } elseif ($this->isUnsigned()){
+            $asserts[] = '@Assert\PositiveOrZero';
+        }
+        if ($length = $this->getLength()) {
+            $asserts[] = '@Assert\Length(max=' . $length . ')';
+        }
+
+        if ($this->getType() === Types::GUID) {
+            $asserts[] = '@Assert\Uuid';
+        }
+        if ($this->getType() === Types::STRING) {
+            if (stripos($this->getName(), 'email') !== false) {
+                $asserts[] = '@Assert\Email';
+            }
+        }
+        return $asserts;
     }
 }

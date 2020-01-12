@@ -3,35 +3,64 @@
 {% block title %}MetaEntity index{% endblock %}
 
 {% block body %}
-    <h1>MetaEntity index</h1>
 
-    <v-simple-table class="table">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Name</th>
-                <th>Number of Properties</th>
-                <th>actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for meta_entity in meta_entities %}
-            <tr>
-                <td>{{ meta_entity.id }}</td>
-                <td>{{ meta_entity.name }}</td>
-                <td>{{ meta_entity.metaProperties.count }}</td>
-                <td>
-                    <v-btn color="warning" href="{{ path('generator_meta_entity_edit', {'id': meta_entity.id}) }}">edit</v-btn>
-                </td>
-            </tr>
-        {% else %}
-            <tr>
-                <td colspan="5">no records found</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </v-simple-table>
-    <p class="mt-1">
-        <v-btn color="primary" href="{{ path('generator_meta_entity_new') }}">Create new</v-btn>
-    </p>
+    <v-row>
+        <v-col>
+            <h1>MetaEntity index</h1>
+            <v-simple-table class="table">
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Name</th>
+                        <th>Number of Properties</th>
+                        <th>actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for meta_entity in meta_entities %}
+                    <tr>
+                        <td>{{ meta_entity.id }}</td>
+                        <td>{{ meta_entity.name }}</td>
+                        <td>{{ meta_entity.metaProperties.count }}</td>
+                        <td>
+                            <v-btn color="warning" href="{{ path('generator_meta_entity_edit', {'id': meta_entity.id}) }}">edit</v-btn>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5">no records found</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </v-simple-table>
+            <p class="mt-1">
+                <v-btn color="primary" href="{{ path('generator_meta_entity_new') }}">Create new</v-btn>
+            </p>
+        </v-col>
+        <v-col>
+            <h1>Existing entities</h1>
+            <v-simple-table class="table">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for entity in entities %}
+                    <tr>
+                        <td>{{ entity }}</td>
+                        <td>
+                            <v-btn color="warning" href="{{ path('generator_meta_entity_new', {'entityName': entity}) }}">re-create</v-btn>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="2">no records found</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </v-simple-table>
+        </v-col>
+    </v-row>
 {% endblock %}

@@ -1,7 +1,7 @@
 {
-  "build/0.css": "/build/0.css",
-  "build/0.js": "/build/0.js",
   "build/generator.css": "/build/generator.css",
   "build/generator.js": "/build/generator.js",
-  "build/runtime.js": "/build/runtime.js"
+  "build/runtime.js": "/build/runtime.js",
+  "build/vendors~generator.css": "/build/vendors~generator.css",
+  "build/vendors~generator.js": "/build/vendors~generator.js"
 }

@@ -23,8 +23,9 @@ class MetaEntity
 
     /**
      * @ORM\Column(type="string")
+     * @Assert\NotBlank()
      */
-    private string $name = 'SomeEntityName';
+    private ?string $name = '';
 
     /**
      * @ORM\Column(type="string")
@@ -33,27 +34,19 @@ class MetaEntity
 
     /**
      * @var string[]
-     * @ORM\Column(type="simple_array")
-     */
-    private array $uses = [
-        'use Doctrine\ORM\Mapping as ORM;'
-    ];
-
-    /**
-     * @var string[]
-     * @ORM\Column(type="simple_array", nullable=true)
+     * @ORM\Column(type="json_array", nullable=true)
      */
     public ?array $interfaces = null;
 
     /**
      * @var string[]
-     * @ORM\Column(type="simple_array", nullable=true)
+     * @ORM\Column(type="json_array", nullable=true)
      */
     public ?array $traits = null;
 
     /**
      * @ORM\OneToMany(targetEntity="K3ssen\GeneratorBundle\Entity\MetaProperty", mappedBy="metaEntity", orphanRemoval=true, cascade={"persist"})
-     * @Assert\Valid()
+     * @Assert\Valid
      */
     private $metaProperties;
 
@@ -99,7 +92,7 @@ class MetaEntity
 
     public function getClass(): string
     {
-        return $this->namespace . '\\' . $this->name;
+        return $this->getNamespace() . '\\' . $this->getName();
     }
 
     public function getRepositoryClass(): string
@@ -112,37 +105,91 @@ class MetaEntity
         return str_replace('\Entity', '\Repository', $this->getNamespace());
     }
 
-    public function getUses(bool $evaluate = false): array
+    public function getUsages(): array
     {
-        return $this->uses;
+        $usages = [
+            'Doctrine\ORM\Mapping as ORM',
+        ];
+        foreach ($this->getMetaProperties() as $metaProperty) {
+            $targetEntity = $metaProperty->getTargetEntity();
+            if ($targetEntity && !$this->hasSameNamespace($targetEntity)) {
+                $usages[] = $targetEntity;
+            }
+            if ($metaProperty->getType() === MetaProperty::MANY_TO_MANY || $metaProperty->getType() === MetaProperty::ONE_TO_MANY) {
+                $usages[] = 'Doctrine\Common\Collections\ArrayCollection';
+                $usages[] = 'Doctrine\Common\Collections\Collection';
+            }
+            if ($metaProperty->getAssertAnnotations()) {
+                $usages[] = 'Symfony\Component\Validator\Constraints as Assert';
+            }
+        }
+        $traits = $this->getTraits() ?: [];
+        foreach ($traits as $namespace) {
+            if ($namespace && !$this->hasSameNamespace($namespace)) {
+                $usages[] = $namespace;
+            }
+        }
+        $interfaces = $this->getInterfaces() ?: [];
+        foreach ($interfaces as $namespace) {
+            if ($namespace && !$this->hasSameNamespace($namespace)) {
+                $usages[] = $namespace;
+            }
+        }
+        return array_unique($usages);
     }
 
-    public function addUse(string $use): self
+    protected function hasSameNamespace(string $class): bool
     {
-        if (!in_array($use, $this->uses, true)) {
-            $this->uses[] = $use;
-        }
-        return $this;
-    }
-
-    public function removeUse(string $use): self
-    {
-        if (($key = array_search($use, $this->uses)) !== false) {
-            unset($this->uses[$key]);
-        }
-        return $this;
+        $parts = explode('\\', $class);
+        array_pop($parts);
+        return $this->getNamespace() === implode('\\', $parts);
     }
 
     public function getAnnotations(): array
     {
-        return [
+        $annotations = [
             sprintf('@ORM\Entity(repositoryClass="%s")', $this->getRepositoryClass()),
         ];
+        return array_merge($annotations, $this->getTableAnnotations());
     }
 
-    public function getInterfaces(bool $evaluate = false): ?array
+    public function getTableAnnotations(): array
     {
-        return $this->interfaces;
+        $annotations = [];
+        /** @var MetaProperty[]|ArrayCollection $indexedProperties */
+        $indexedProperties = $this->getMetaProperties()->filter(function(MetaProperty $metaProperty) {
+            return $metaProperty->isIndexed();
+        });
+        if ($indexedProperties->count() > 0) {
+            $annotations[] = '@ORM\Table(indexes={';
+            $tableAnnotations = [];
+            foreach ($indexedProperties as $property) {
+                $tableAnnotations[] = sprintf(
+                    '    @ORM\Index(name="idx_%s_%s", columns={"%s"})',
+                    Inflector::tableize($this->getName()),
+                    Inflector::tableize($property->getName()),
+                    $property->getName()
+                );
+            }
+            $annotations[] = implode(',', $tableAnnotations);
+            $annotations[] = '}';
+        }
+        return $annotations;
+    }
+
+    public function getInterfaces(): array
+    {
+        return array_unique($this->interfaces ?: []);
+    }
+
+    public function getInterfaceNames(): array
+    {
+        $names = [];
+        foreach ($this->getInterfaces() ?: [] as $class) {
+            $parts = explode('\\', $class);
+            $names[] = array_pop($parts);
+        }
+        return $names;
     }
 
     public function addInterface(string $interface): self
@@ -151,9 +198,19 @@ class MetaEntity
         return $this;
     }
 
-    public function getTraits(bool $evaluate = false): ?array
+    public function getTraits(): array
     {
-        return $this->traits;
+        return array_unique($this->traits ?: []);
+    }
+
+    public function getTraitNames(): array
+    {
+        $names = [];
+        foreach ($this->getTraits() ?: [] as $class) {
+            $parts = explode('\\', $class);
+            $names[] = array_pop($parts);
+        }
+        return $names;
     }
 
     public function addTrait(string $trait): self

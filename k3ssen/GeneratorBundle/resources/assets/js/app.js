@@ -11,7 +11,6 @@ const vuetify = new Vuetify();
 require('./globalComponents');
 require('./globalStoreAndMixin');
 
-
 new Vue({
     el: '#app',
     vuetify,
